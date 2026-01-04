@@ -15,14 +15,10 @@ pipeline {
     }
 
     environment {
-        TF_VERSION = '1.6.0'
         AWS_REGION = 'us-east-1'
-        PROJECT_NAME = 'test-3'
-
         TF_IN_AUTOMATION = 'true'
         TF_INPUT = 'false'
 
-        // Only AWS credentials needed now
         AWS_CREDENTIALS = credentials('aws-credentials')
     }
 
@@ -39,7 +35,13 @@ pipeline {
             }
         }
 
-        stage('Terraform Init (Local State)') {
+        stage('Validate AWS Access') {
+            steps {
+                sh 'aws sts get-caller-identity'
+            }
+        }
+
+        stage('Terraform Init') {
             steps {
                 dir('test-3-terraform') {
                     sh 'terraform init'
@@ -64,3 +66,41 @@ pipeline {
             }
             steps {
                 dir('test-3-terraform') {
+                    script {
+                        if (params.AUTO_APPROVE) {
+                            sh 'terraform apply -auto-approve'
+                        } else {
+                            sh 'terraform apply'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Terraform Destroy') {
+            when {
+                expression { params.ACTION == 'destroy' }
+            }
+            steps {
+                dir('test-3-terraform') {
+                    script {
+                        if (params.AUTO_APPROVE) {
+                            sh 'terraform destroy -auto-approve'
+                        } else {
+                            sh 'terraform destroy'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Terraform ${params.ACTION} completed successfully"
+        }
+        failure {
+            echo "Terraform ${params.ACTION} failed"
+        }
+    }
+}
