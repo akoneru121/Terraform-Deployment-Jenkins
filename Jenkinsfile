@@ -22,9 +22,8 @@ pipeline {
         TF_IN_AUTOMATION = 'true'
         TF_INPUT = 'false'
 
-        AWS_CREDENTIALS     = credentials('aws-credentials')
-        TF_STATE_BUCKET     = credentials('tf-state-bucket')
-        TF_STATE_LOCK_TABLE = credentials('tf-state-lock-table')
+        // Only AWS credentials needed now
+        AWS_CREDENTIALS = credentials('aws-credentials')
     }
 
     options {
@@ -40,15 +39,10 @@ pipeline {
             }
         }
 
-        stage('Terraform Init') {
+        stage('Terraform Init (Local State)') {
             steps {
                 dir('test-3-terraform') {
-                    sh '''
-                        terraform init \
-                          -backend-config="bucket=${TF_STATE_BUCKET}" \
-                          -backend-config="dynamodb_table=${TF_STATE_LOCK_TABLE}" \
-                          -backend-config="region=${AWS_REGION}"
-                    '''
+                    sh 'terraform init'
                 }
             }
         }
@@ -70,37 +64,3 @@ pipeline {
             }
             steps {
                 dir('test-3-terraform') {
-                    script {
-                        sh params.AUTO_APPROVE ?
-                            'terraform apply -auto-approve' :
-                            'terraform apply'
-                    }
-                }
-            }
-        }
-
-        stage('Terraform Destroy') {
-            when {
-                expression { params.ACTION == 'destroy' }
-            }
-            steps {
-                dir('test-3-terraform') {
-                    script {
-                        sh params.AUTO_APPROVE ?
-                            'terraform destroy -auto-approve' :
-                            'terraform destroy'
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo "Terraform ${params.ACTION} completed successfully"
-        }
-        failure {
-            echo "Terraform ${params.ACTION} failed"
-        }
-    }
-}
