@@ -5,7 +5,7 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['plan', 'apply', 'destroy'],
-            description: 'Terraform action to perform'
+            description: 'Terraform action'
         )
         booleanParam(
             name: 'AUTO_APPROVE',
@@ -15,16 +15,9 @@ pipeline {
     }
 
     environment {
-        AWS_REGION = 'us-east-1'
+        AWS_DEFAULT_REGION = 'us-east-1'
         TF_IN_AUTOMATION = 'true'
         TF_INPUT = 'false'
-
-        AWS_CREDENTIALS = credentials('aws-credentials')
-    }
-
-    options {
-        buildDiscarder(logRotator(numToKeepStr: '30'))
-        timeout(time: 60, unit: 'MINUTES')
     }
 
     stages {
@@ -35,15 +28,12 @@ pipeline {
             }
         }
 
-        // stage('Validate AWS Access') {
-        //     steps {
-        //         sh 'aws sts get-caller-identity'
-        //     }
-        // }
-
         stage('Terraform Init') {
             steps {
-                dir('test-3-terraform') {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
                     sh 'terraform init'
                 }
             }
@@ -54,7 +44,10 @@ pipeline {
                 expression { params.ACTION == 'plan' || params.ACTION == 'apply' }
             }
             steps {
-                dir('test-3-terraform') {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
                     sh 'terraform plan'
                 }
             }
@@ -65,14 +58,13 @@ pipeline {
                 expression { params.ACTION == 'apply' }
             }
             steps {
-                dir('test-3-terraform') {
-                    script {
-                        if (params.AUTO_APPROVE) {
-                            sh 'terraform apply -auto-approve'
-                        } else {
-                            sh 'terraform apply'
-                        }
-                    }
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+                    sh params.AUTO_APPROVE ?
+                        'terraform apply -auto-approve' :
+                        'terraform apply'
                 }
             }
         }
@@ -82,14 +74,13 @@ pipeline {
                 expression { params.ACTION == 'destroy' }
             }
             steps {
-                dir('test-3-terraform') {
-                    script {
-                        if (params.AUTO_APPROVE) {
-                            sh 'terraform destroy -auto-approve'
-                        } else {
-                            sh 'terraform destroy'
-                        }
-                    }
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-credentials']
+                ]) {
+                    sh params.AUTO_APPROVE ?
+                        'terraform destroy -auto-approve' :
+                        'terraform destroy'
                 }
             }
         }
