@@ -35,11 +35,11 @@ pipeline {
             }
         }
 
-        stage('Validate AWS Access') {
-            steps {
-                sh 'aws sts get-caller-identity'
-            }
-        }
+        // stage('Validate AWS Access') {
+        //     steps {
+        //         sh 'aws sts get-caller-identity'
+        //     }
+        // }
 
         stage('Terraform Init') {
             steps {
