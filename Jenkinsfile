@@ -22,7 +22,6 @@ pipeline {
         TF_IN_AUTOMATION = 'true'
         TF_INPUT = 'false'
 
-        // Jenkins credentials (MUST exist in Jenkins)
         AWS_CREDENTIALS     = credentials('aws-credentials')
         TF_STATE_BUCKET     = credentials('tf-state-bucket')
         TF_STATE_LOCK_TABLE = credentials('tf-state-lock-table')
@@ -72,11 +71,9 @@ pipeline {
             steps {
                 dir('test-3-terraform') {
                     script {
-                        if (params.AUTO_APPROVE) {
-                            sh 'terraform apply -auto-approve'
-                        } else {
-                            sh 'terraform apply'
-                        }
+                        sh params.AUTO_APPROVE ?
+                            'terraform apply -auto-approve' :
+                            'terraform apply'
                     }
                 }
             }
@@ -89,11 +86,9 @@ pipeline {
             steps {
                 dir('test-3-terraform') {
                     script {
-                        if (params.AUTO_APPROVE) {
-                            sh 'terraform destroy -auto-approve'
-                        } else {
-                            sh 'terraform destroy'
-                        }
+                        sh params.AUTO_APPROVE ?
+                            'terraform destroy -auto-approve' :
+                            'terraform destroy'
                     }
                 }
             }
@@ -106,9 +101,6 @@ pipeline {
         }
         failure {
             echo "Terraform ${params.ACTION} failed"
-        }
-        always {
-            deleteDir()
         }
     }
 }
